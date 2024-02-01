@@ -1,0 +1,43 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+        <LinearLayout
+            android:id="@+id/taskItemLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingVertical="4dp"
+            android:paddingHorizontal="9dp"
+            android:background="#b0acac"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="12dp">
+                <TextView
+                    android:id="@+id/titleTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Task Title"
+                    android:textSize="21sp"
+                    android:textStyle="bold"
+                    android:textColor="#000000" />
+                <TextView
+                    android:id="@+id/descriptionTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Task Description"
+                    android:textSize="19sp"
+                    android:textColor="#000000" />
+                <TextView
+                    android:id="@+id/dueDateTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Due Date: "
+                    android:textSize="16sp"
+                    android:textColor="#808080"/>
+        </LinearLayout>
+        <View
+            android:layout_width="250dp"
+            android:layout_gravity="center"
+            android:layout_height="3dp"
+            android:background="#000000" />
+</LinearLayout>

@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "427315461127",
+    "project_id": "swift-tasks-83e16",
+    "firebase_url": "https://swift-tasks-83e16-default-rtdb.europe-west1.firebasedatabase.app",
+    "storage_bucket": "swift-tasks-83e16.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:427315461127:android:8daf090836de572930fea2",
+        "android_client_info": {
+          "package_name": "com.example.taskmanagement"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBNeW8rcMmSRjvEMiS1-uSCPU5JdoTYtjo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
