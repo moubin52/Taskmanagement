@@ -17,7 +17,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="#48444c"
-            android:text="Welcome back, useer"
+            android:text="Welcome back, guest"
             android:textSize="35sp"
             android:textAlignment="center"
             android:paddingTop="65dp"

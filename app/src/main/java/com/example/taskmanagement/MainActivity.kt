@@ -1,9 +1,11 @@
 package com.example.taskmanagement
 
+
 import TaskAdapter
 import android.app.AlertDialog
 import android.app.DatePickerDialog
 import android.content.ContentValues.TAG
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -22,8 +24,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -31,21 +33,34 @@ import java.util.Locale
 import java.util.UUID
 
 class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
-
     private val taskRepository = TaskRepository()
     private lateinit var taskAdapter: TaskAdapter
     private lateinit var emptyStateLayout: View
     private lateinit var recyclerViewTasks: RecyclerView
     private lateinit var textViewWelcome: TextView
     private lateinit var taskCountTextView: TextView
-
-
+    private lateinit var profileButton: FloatingActionButton
+    private val db = FirebaseFirestore.getInstance()
+    private val userCollectionRef = db.collection("users")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // Initialize views
         taskCountTextView = findViewById(R.id.taskCountTextView)
         recyclerViewTasks = findViewById(R.id.recyclerViewTasks)
+        textViewWelcome = findViewById(R.id.textViewWelcome)
+        profileButton = findViewById(R.id.buttonProfile)
+        emptyStateLayout = findViewById(R.id.emptyStateLayout)
+
+        // Retrieve the username and date from the intent extras
+        val username = intent.getStringExtra("USERNAME")
+        // Update the welcome message with the username
+        val welcomeMessage = "Welcome back, ${username ?: "guest"}"
+        textViewWelcome.text = welcomeMessage
+
+        // Initialize RecyclerView
         taskAdapter = TaskAdapter(
             emptyList(),
             { task -> },
@@ -55,8 +70,7 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
         recyclerViewTasks.layoutManager = LinearLayoutManager(this)
         recyclerViewTasks.adapter = taskAdapter
 
-        textViewWelcome = findViewById(R.id.textViewWelcome)
-
+        // Initialize DrawerLayout and NavigationView
         val drawerLayout: DrawerLayout = findViewById(R.id.drawerLayout)
         val buttonOpenDrawer: FloatingActionButton = findViewById(R.id.buttonSettings)
         val navigationView: NavigationView = findViewById(R.id.navigationView)
@@ -67,6 +81,14 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
 
 
 
+
+        // Initialize profileButton click listener
+        profileButton.setOnClickListener {
+            // Start ProfileActivity and pass the username and creation date as extras
+            val intent = Intent(this, ProfileActivity::class.java)
+            intent.putExtra("USERNAME", username)
+            startActivity(intent)
+        }
         navigationView.setNavigationItemSelectedListener { menuItem ->
             when (menuItem.itemId) {
                 R.id.nav_login -> {
@@ -80,19 +102,6 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
                 else -> false
             }
         }
-
-        recyclerViewTasks = findViewById(R.id.recyclerViewTasks)
-        emptyStateLayout = findViewById(R.id.emptyStateLayout)
-
-        // Setup RecyclerView and TaskAdapter
-        taskAdapter = TaskAdapter(
-            emptyList(),
-            { task -> },
-            this,
-            { task -> showEditTaskDialog(task) }
-        )
-        recyclerViewTasks.layoutManager = LinearLayoutManager(this)
-        recyclerViewTasks.adapter = taskAdapter
 
         // Setup item touch helper for swipe-to-delete functionality
         val itemTouchHelperCallback = object : ItemTouchHelper.SimpleCallback(
@@ -118,8 +127,60 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
         buttonAddTask.setOnClickListener {
             showAddTaskDialog()
         }
-        taskCountTextView = findViewById(R.id.taskCountTextView)
+
         observeTasks()
+    }
+    override fun onItemDismiss(position: Int) {
+        val task = taskAdapter.getTaskAtPosition(position)
+
+        if (task != null) {
+            val db = FirebaseFirestore.getInstance()
+            val documentRef = db.collection("tasks").document(task.id)
+
+            Log.d(TAG, "Attempting to delete document: ${documentRef.path}")
+
+            // Increment completion count for the user
+            val userId = FirebaseAuth.getInstance().currentUser?.uid
+            if (userId != null) {
+                val userRef = db.collection("users").document(userId)
+                db.runTransaction { transaction ->
+                    val snapshot = transaction.get(userRef)
+                    val currentCompletedTasks = snapshot.getLong("completed") ?: 0
+                    Log.d(TAG, "Current completed tasks: $currentCompletedTasks")
+                    transaction.update(userRef, "completed", currentCompletedTasks + 1)
+                }
+                    .addOnSuccessListener {
+                        Log.d(TAG, "User completion count updated successfully")
+                        // Once completion count is updated, proceed to delete the task
+                        deleteTask(documentRef, position)
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e(TAG, "Error updating user completion count", e)
+                    }
+            } else {
+                Log.e(TAG, "User ID is null")
+            }
+        } else {
+            Log.e(TAG, "Task is null")
+        }
+    }
+
+    private fun deleteTask(documentRef: DocumentReference, position: Int) {
+        documentRef.delete()
+            .addOnSuccessListener {
+                Log.d(TAG, "DocumentSnapshot successfully deleted!")
+                val updatedTasks = taskAdapter.getTasks().toMutableList()
+                if (position >= 0 && position < updatedTasks.size) {
+                    updatedTasks.removeAt(position)
+                    taskAdapter.updateTasks(updatedTasks)
+                    Log.d(TAG, "Task removed from adapter")
+                } else {
+                    Log.w(TAG, "Invalid position $position for list size ${updatedTasks.size}")
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Error deleting document", e)
+            }
     }
 
     private fun showLoginDialog() {
@@ -158,15 +219,16 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
 
         dialog.show()
     }
-
     private fun signUpUserToFirestore(username: String) {
         val currentUser = FirebaseAuth.getInstance().currentUser
         currentUser?.let { user ->
             val userId = user.uid
+            val signUpDate = Calendar.getInstance().time // Get the current date
             val db = FirebaseFirestore.getInstance()
             val userData = hashMapOf(
                 "userId" to userId,
-                "username" to username
+                "username" to username,
+                "signUpDate" to signUpDate // Add sign-up date to user data
                 // Add more user data as needed
             )
             db.collection("users").document(userId)
@@ -182,10 +244,6 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
                 }
         }
     }
-
-
-
-
     private fun showSignUpDialog() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_signup, null)
         val editTextUsername = dialogView.findViewById<EditText>(R.id.editTextUsername)
@@ -302,10 +360,6 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
         // Show the dialog
         dialog.show()
     }
-
-
-
-
     private fun showEditTaskDialog(task: Task) {
         val editTaskDialog = EditTaskDialog(task) { editedTask ->
             taskRepository.updateTask(editedTask)
@@ -313,9 +367,6 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
         val fragmentManager: FragmentManager = supportFragmentManager
         editTaskDialog.show(fragmentManager, "EditTaskDialog")
     }
-
-    private var tasksListenerRegistration: ListenerRegistration? = null
-
     private fun observeTasks() {
         // Get the current user ID
         val userId = FirebaseAuth.getInstance().currentUser?.uid
@@ -355,48 +406,14 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
             // For example, show a login dialog or redirect to the login screen
         }
     }
-
     private fun updateTaskCount(count: Int) {
         taskCountTextView.text = "Tasks: $count"
     }
-    override fun onItemDismiss(position: Int) {
-        val task = taskAdapter.getTaskAtPosition(position)
-
-        if (task != null) {
-            val db = FirebaseFirestore.getInstance()
-            val documentRef = db.collection("tasks").document(task.id)
-
-            Log.d(TAG, "Attempting to delete document: ${documentRef.path}")
-
-            documentRef.delete()
-                .addOnSuccessListener {
-                    Log.d(TAG, "DocumentSnapshot successfully deleted!")
-                    val updatedTasks = taskAdapter.getTasks().toMutableList()
-                    if (position >= 0 && position < updatedTasks.size) {
-                        updatedTasks.removeAt(position)
-                        taskAdapter.updateTasks(updatedTasks)
-                        Log.d(TAG, "Task removed from adapter")
-                    } else {
-                        Log.w(TAG, "Invalid position $position for list size ${updatedTasks.size}")
-                    }
-                }
-                .addOnFailureListener { e ->
-                    Log.w(TAG, "Error deleting document", e)
-                }
-        } else {
-            Log.e(TAG, "Task is null")
-        }
-    }
-
-
-
-
 
     private fun formatDate(date: Date): String {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         return sdf.format(date)
     }
-
     private fun updateEmptyStateVisibility(isEmpty: Boolean) {
         if (isEmpty) {
             emptyStateLayout.visibility = View.VISIBLE
