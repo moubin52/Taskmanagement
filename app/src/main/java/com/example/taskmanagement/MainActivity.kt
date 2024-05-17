@@ -42,6 +42,7 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
     private lateinit var profileButton: FloatingActionButton
     private val db = FirebaseFirestore.getInstance()
     private val userCollectionRef = db.collection("users")
+    private lateinit var pointsTextView: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,6 +54,8 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
         textViewWelcome = findViewById(R.id.textViewWelcome)
         profileButton = findViewById(R.id.buttonProfile)
         emptyStateLayout = findViewById(R.id.emptyStateLayout)
+        pointsTextView = findViewById(R.id.pointsTextView)
+
 
         // Retrieve the username and date from the intent extras
         val username = intent.getStringExtra("USERNAME")
@@ -127,7 +130,7 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
         buttonAddTask.setOnClickListener {
             showAddTaskDialog()
         }
-
+        fetchAndDisplayPoints()
         observeTasks()
     }
     override fun onItemDismiss(position: Int) {
@@ -146,8 +149,10 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
                 db.runTransaction { transaction ->
                     val snapshot = transaction.get(userRef)
                     val currentCompletedTasks = snapshot.getLong("completed") ?: 0
+                    val currentPoints = snapshot.getLong("points") ?: 0 // Get current points
                     Log.d(TAG, "Current completed tasks: $currentCompletedTasks")
                     transaction.update(userRef, "completed", currentCompletedTasks + 1)
+                    transaction.update(userRef, "points", currentPoints + 2) // Increment points by 2
                 }
                     .addOnSuccessListener {
                         Log.d(TAG, "User completion count updated successfully")
@@ -162,6 +167,25 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
             }
         } else {
             Log.e(TAG, "Task is null")
+        }
+    }
+
+    private fun fetchAndDisplayPoints() {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        userId?.let { uid ->
+            val db = FirebaseFirestore.getInstance()
+            val userRef = db.collection("users").document(uid)
+
+            userRef.get()
+                .addOnSuccessListener { documentSnapshot ->
+                    if (documentSnapshot.exists()) {
+                        val points = documentSnapshot.getLong("points") ?: 0
+                        pointsTextView.text = "Points: $points"
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "Error fetching points", e)
+                }
         }
     }
 
@@ -228,7 +252,8 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
             val userData = hashMapOf(
                 "userId" to userId,
                 "username" to username,
-                "signUpDate" to signUpDate // Add sign-up date to user data
+                "signUpDate" to signUpDate, // Add sign-up date to user data
+                "points" to 0 // Initialize points to 0 for new users
                 // Add more user data as needed
             )
             db.collection("users").document(userId)
@@ -340,6 +365,21 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
                         .addOnSuccessListener {
                             Log.d(TAG, "DocumentSnapshot added with ID: $taskId")
                             dialog.dismiss()
+                            // Increment points directly here
+                            val userRef = db.collection("users").document(userId)
+                            db.runTransaction { transaction ->
+                                val snapshot = transaction.get(userRef)
+                                val currentPoints = snapshot.getLong("points") ?: 0
+                                transaction.update(userRef, "points", currentPoints + 1) // Increment by 1 points for task creation
+                            }
+                                .addOnSuccessListener {
+                                    Log.d(TAG, "Points incremented successfully")
+                                    fetchAndDisplayPoints()
+
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.e(TAG, "Error incrementing points", e)
+                                }
                         }
                         .addOnFailureListener { e ->
                             // Handle error adding task
@@ -396,14 +436,12 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
                         // Update the UI with the retrieved tasks
                         taskAdapter.updateTasks(tasksList)
                         updateEmptyStateVisibility(tasksList.isEmpty())
-                        updateTaskCount(tasksList.size) // Update task count
+                        updateTaskCount(tasksList.size)// Update task count
+                        fetchAndDisplayPoints()
                     } else {
                         Log.d(TAG, "Current data: null")
                     }
                 }
-        } else {
-            // Handle the case where the user is not logged in
-            // For example, show a login dialog or redirect to the login screen
         }
     }
     private fun updateTaskCount(count: Int) {
@@ -414,6 +452,8 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         return sdf.format(date)
     }
+
+
     private fun updateEmptyStateVisibility(isEmpty: Boolean) {
         if (isEmpty) {
             emptyStateLayout.visibility = View.VISIBLE
