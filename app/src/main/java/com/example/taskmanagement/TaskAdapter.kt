@@ -1,11 +1,13 @@
-package com.example.taskmanagement
-
 import android.annotation.SuppressLint
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.example.taskmanagement.ItemTouchHelperAdapter
+import com.example.taskmanagement.R
+import com.example.taskmanagement.Task
 
 class TaskAdapter(
     private var tasks: List<Task>,
@@ -13,15 +15,18 @@ class TaskAdapter(
     private val swipeToDeleteListener: ItemTouchHelperAdapter,
     private val editTaskListener: (Task) -> Unit
 ) : RecyclerView.Adapter<TaskAdapter.TaskViewHolder>() {
+
     inner class TaskViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val titleTextView: TextView = itemView.findViewById(R.id.titleTextView)
         val descriptionTextView: TextView = itemView.findViewById(R.id.descriptionTextView)
         val dueDateTextView: TextView = itemView.findViewById(R.id.dueDateTextView)
     }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TaskViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_task, parent, false)
         return TaskViewHolder(view)
     }
+
     override fun onBindViewHolder(holder: TaskViewHolder, position: Int) {
         val currentTask = tasks[position]
         holder.titleTextView.text = currentTask.title
@@ -39,12 +44,17 @@ class TaskAdapter(
         }
     }
 
+    fun getTasks(): List<Task> {
+        return tasks
+    }
+
     override fun getItemCount(): Int {
         return tasks.size
     }
 
     @SuppressLint("NotifyDataSetChanged")
     fun updateTasks(newTasks: List<Task>) {
+        Log.d("TaskAdapter", "Updating tasks: ${newTasks.size}")
         tasks = newTasks
         notifyDataSetChanged()
     }

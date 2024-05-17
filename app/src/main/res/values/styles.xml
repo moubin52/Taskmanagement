@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="colorPrimary">#38343C</item>
         <item name="colorPrimaryDark">#48444C</item>
         <item name="colorAccent">#38343C</item>
         <item name="android:fontFamily">@font/oswald</item>
     </style>
+    <style name="AppTheme.NavigationViewTextStyle">
+        <item name="android:textSize">21sp</item>
+    </style>
+
 
 </resources>
