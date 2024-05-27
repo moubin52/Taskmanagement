@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#2f2e35"
+    tools:context=".FriendsActivity">
+
+    <TextView
+        android:id="@+id/textViewTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#48444c"
+        android:text="Friends"
+        android:textSize="35sp"
+        android:textAlignment="center"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/textViewFriendCode"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/textViewTitle"
+        android:layout_marginTop="16dp"
+        android:layout_centerHorizontal="true"
+        android:text="Friend Code: ABC123"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp" />
+
+    <EditText
+        android:id="@+id/editTextSearch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/textViewFriendCode"
+        android:layout_marginTop="16dp"
+        android:layout_marginStart="16dp"
+        android:layout_toStartOf="@id/buttonAdd"
+        android:layout_toLeftOf="@id/buttonAdd"
+        android:layout_marginEnd="8dp"
+        android:hint="Enter friend code"
+        android:background="#CCCCCC"
+        android:textColor="#000000"
+        android:padding="8dp"
+        android:textColorHint="#48444c"
+        android:singleLine="true" />
+
+    <Button
+        android:id="@+id/buttonAdd"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@id/editTextSearch"
+        android:layout_alignBottom="@id/editTextSearch"
+        android:layout_marginEnd="16dp"
+        android:layout_alignParentEnd="true"
+        android:text="Add"
+        android:backgroundTint="#48444c"
+        android:textColor="#FFFFFF" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerViewFriends"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/editTextSearch"
+        android:layout_marginTop="16dp"
+        android:padding="16dp"
+        android:background="#2f2e35" />
+</RelativeLayout>

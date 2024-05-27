@@ -27,7 +27,21 @@
             android:name=".ProfileActivity"
             android:exported="true"
             android:theme="@style/AppTheme">
-            >
+        </activity>
+        <activity
+        android:name=".BadgesActivity"
+        android:exported="true"
+        android:theme="@style/AppTheme">
+    </activity>
+        <activity
+            android:name=".FriendsActivity"
+            android:exported="true"
+            android:theme="@style/AppTheme">
+        </activity>
+        <activity
+            android:name=".FriendProfileActivity"
+            android:exported="true"
+            android:theme="@style/AppTheme">
         </activity>
     </application>
 </manifest>

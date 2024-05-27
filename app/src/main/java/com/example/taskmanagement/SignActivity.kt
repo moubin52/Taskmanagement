@@ -26,12 +26,16 @@ class SignInActivity : AppCompatActivity() {
         currentUser?.let { user ->
             val userId = user.uid
             val signUpDate = Calendar.getInstance().time // Get the current date
+            val friendcode = generateRandomCode(5) // Generate a random 5-character code
             val db = FirebaseFirestore.getInstance()
             val userData = hashMapOf(
                 "userId" to userId,
                 "username" to username,
                 "signUpDate" to signUpDate, // Add sign-up date to user data
-                "completedTasks" to 0 // Initialize completed tasks counter to 0
+                "completedTasks" to 0, // Initialize completed tasks counter to 0
+                "unlockedBadges" to ArrayList<String>(),
+                "friendcode" to friendcode, // Add friendcode to user data
+                "friendslist" to ArrayList<String>() // Initialize friendslist as empty
                 // Add more user data as needed
             )
             db.collection("users").document(userId)
@@ -46,6 +50,13 @@ class SignInActivity : AppCompatActivity() {
                     Log.e(TAG, "Error adding document", e)
                 }
         }
+    }
+
+    private fun generateRandomCode(length: Int): String {
+        val allowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        return (1..length)
+            .map { allowedChars.random() }
+            .joinToString("")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,13 +78,33 @@ class SignInActivity : AppCompatActivity() {
                 FirebaseAuth.getInstance().signInWithEmailAndPassword("$username@placeholder.com", password)
                     .addOnCompleteListener(this) { task ->
                         if (task.isSuccessful) {
-                            // Sign in success
-                            val intent = Intent(this, MainActivity::class.java)
-                            intent.putExtra("USERNAME", username) // Pass the username as an extra
-                            startActivity(intent)
-                            finish()
+                            val user = FirebaseAuth.getInstance().currentUser
+                            user?.let {
+                                val userId = user.uid
+                                val db = FirebaseFirestore.getInstance()
+
+                                db.collection("users").document(userId).get()
+                                    .addOnSuccessListener { document ->
+                                        if (document != null) {
+                                            val friendcode = document.getString("friendcode")
+                                            val friendslist = document.get("friendslist") as? ArrayList<String>
+
+                                            val intent = Intent(this, MainActivity::class.java).apply {
+                                                putExtra("USERNAME", username)
+                                                putExtra("FRIENDCODE", friendcode)
+                                                putStringArrayListExtra("FRIENDSLIST", friendslist)
+                                            }
+                                            startActivity(intent)
+                                            finish()
+                                        } else {
+                                            Toast.makeText(this, "Failed to retrieve user data.", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                    .addOnFailureListener { e ->
+                                        Toast.makeText(this, "Failed to retrieve user data.", Toast.LENGTH_SHORT).show()
+                                    }
+                            }
                         } else {
-                            // Sign in failed, display a message to the user
                             Toast.makeText(baseContext, "Authentication failed. Please try again.", Toast.LENGTH_SHORT).show()
                         }
                     }
@@ -104,6 +135,5 @@ class SignInActivity : AppCompatActivity() {
                 Toast.makeText(this, "Please enter both username and password", Toast.LENGTH_SHORT).show()
             }
         }
-
     }
 }

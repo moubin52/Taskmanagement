@@ -1,6 +1,5 @@
 package com.example.taskmanagement
 
-
 import TaskAdapter
 import android.app.AlertDialog
 import android.app.DatePickerDialog
@@ -41,8 +40,9 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
     private lateinit var taskCountTextView: TextView
     private lateinit var profileButton: FloatingActionButton
     private val db = FirebaseFirestore.getInstance()
-    private val userCollectionRef = db.collection("users")
     private lateinit var pointsTextView: TextView
+    private lateinit var currentUserId: String
+    private lateinit var currentUsername: String
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,12 +56,15 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
         emptyStateLayout = findViewById(R.id.emptyStateLayout)
         pointsTextView = findViewById(R.id.pointsTextView)
 
+        // Retrieve the original user ID from the intent extras
+        currentUserId = intent.getStringExtra("USER_ID") ?: FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        currentUsername = intent.getStringExtra("USERNAME") ?:""
 
-        // Retrieve the username and date from the intent extras
-        val username = intent.getStringExtra("USERNAME")
-        // Update the welcome message with the username
-        val welcomeMessage = "Welcome back, ${username ?: "guest"}"
-        textViewWelcome.text = welcomeMessage
+        if (currentUserId.isNotEmpty()) {
+            fetchAndDisplayUserDetails(currentUserId)
+        } else {
+            Log.e(TAG, "User ID is null or empty")
+        }
 
         // Initialize RecyclerView
         taskAdapter = TaskAdapter(
@@ -82,24 +85,27 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
             drawerLayout.openDrawer(GravityCompat.START)
         }
 
-
-
-
         // Initialize profileButton click listener
         profileButton.setOnClickListener {
             // Start ProfileActivity and pass the username and creation date as extras
             val intent = Intent(this, ProfileActivity::class.java)
-            intent.putExtra("USERNAME", username)
+            intent.putExtra("USER_ID", currentUserId)
+            intent.putExtra("USERNAME", currentUsername)
             startActivity(intent)
         }
+
         navigationView.setNavigationItemSelectedListener { menuItem ->
             when (menuItem.itemId) {
-                R.id.nav_login -> {
-                    showLoginDialog()
+                R.id.nav_friends -> {
+                    showFriendsActivity()
                     true
                 }
-                R.id.nav_signup -> {
-                    showSignUpDialog()
+                R.id.nav_badges -> {
+                    showBadgesActivity()
+                    true
+                }
+                R.id.nav_signout -> {
+                    showSignActivity()
                     true
                 }
                 else -> false
@@ -133,6 +139,43 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
         fetchAndDisplayPoints()
         observeTasks()
     }
+
+    private fun fetchAndDisplayUserDetails(userId: String) {
+        val db = FirebaseFirestore.getInstance()
+        val userRef = db.collection("users").document(userId)
+
+        userRef.get()
+            .addOnSuccessListener { documentSnapshot ->
+                if (documentSnapshot.exists()) {
+                    val username = documentSnapshot.getString("username") ?: "guest"
+                    // Update the welcome message with the username
+                    val welcomeMessage = "Welcome back, $username"
+                    textViewWelcome.text = welcomeMessage
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Error fetching user details", e)
+            }
+    }
+
+    private fun showSignActivity() {
+        val intent = Intent(this, SignInActivity::class.java)
+        startActivity(intent)
+    }
+
+    private fun showFriendsActivity() {
+        val intent = Intent(this, FriendsActivity::class.java)
+        intent.putExtra("USER_ID", currentUserId)
+        startActivity(intent)
+    }
+
+    private fun showBadgesActivity() {
+        val intent = Intent(this, BadgesActivity::class.java)
+        intent.putExtra("USER_ID", currentUserId)
+        intent.putExtra("USERNAME", currentUsername)
+        startActivity(intent)
+    }
+
     override fun onItemDismiss(position: Int) {
         val task = taskAdapter.getTaskAtPosition(position)
 
@@ -143,9 +186,8 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
             Log.d(TAG, "Attempting to delete document: ${documentRef.path}")
 
             // Increment completion count for the user
-            val userId = FirebaseAuth.getInstance().currentUser?.uid
-            if (userId != null) {
-                val userRef = db.collection("users").document(userId)
+            if (currentUserId.isNotEmpty()) {
+                val userRef = db.collection("users").document(currentUserId)
                 db.runTransaction { transaction ->
                     val snapshot = transaction.get(userRef)
                     val currentCompletedTasks = snapshot.getLong("completed") ?: 0
@@ -163,7 +205,7 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
                         Log.e(TAG, "Error updating user completion count", e)
                     }
             } else {
-                Log.e(TAG, "User ID is null")
+                Log.e(TAG, "User ID is null or empty")
             }
         } else {
             Log.e(TAG, "Task is null")
@@ -171,22 +213,18 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
     }
 
     private fun fetchAndDisplayPoints() {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
-        userId?.let { uid ->
-            val db = FirebaseFirestore.getInstance()
-            val userRef = db.collection("users").document(uid)
+        val userRef = db.collection("users").document(currentUserId)
 
-            userRef.get()
-                .addOnSuccessListener { documentSnapshot ->
-                    if (documentSnapshot.exists()) {
-                        val points = documentSnapshot.getLong("points") ?: 0
-                        pointsTextView.text = "Points: $points"
-                    }
+        userRef.get()
+            .addOnSuccessListener { documentSnapshot ->
+                if (documentSnapshot.exists()) {
+                    val points = documentSnapshot.getLong("points") ?: 0
+                    pointsTextView.text = "Points: $points"
                 }
-                .addOnFailureListener { e ->
-                    Log.e(TAG, "Error fetching points", e)
-                }
-        }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Error fetching points", e)
+            }
     }
 
     private fun deleteTask(documentRef: DocumentReference, position: Int) {
@@ -207,42 +245,6 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
             }
     }
 
-    private fun showLoginDialog() {
-        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_login, null)
-        val editTextUsername = dialogView.findViewById<EditText>(R.id.editTextUsernameLogin)
-        val editTextPassword = dialogView.findViewById<EditText>(R.id.editTextPasswordLogin)
-        val buttonLogin = dialogView.findViewById<Button>(R.id.buttonLogIn)
-        val buttonCancel = dialogView.findViewById<Button>(R.id.buttonCancelLogIn)
-        val builder = AlertDialog.Builder(this)
-            .setView(dialogView)
-        val dialog = builder.create()
-
-        buttonLogin.setOnClickListener {
-            val username = editTextUsername.text.toString().trim()
-            val password = editTextPassword.text.toString().trim()
-
-            if (username.isNotEmpty() && password.isNotEmpty()) {
-                FirebaseAuth.getInstance().signInWithEmailAndPassword("$username@placeholder.com", password)
-                    .addOnCompleteListener(this) { task ->
-                        if (task.isSuccessful) {
-                            textViewWelcome.text = "Welcome back, $username"
-                            dialog.dismiss()
-                            observeTasks()
-                        } else {
-                            Toast.makeText(baseContext, "Authentication failed. Please try again.", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-            } else {
-                Toast.makeText(this, "Please enter both username and password", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        buttonCancel.setOnClickListener {
-            dialog.dismiss()
-        }
-
-        dialog.show()
-    }
     private fun signUpUserToFirestore(username: String) {
         val currentUser = FirebaseAuth.getInstance().currentUser
         currentUser?.let { user ->
@@ -269,47 +271,7 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
                 }
         }
     }
-    private fun showSignUpDialog() {
-        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_signup, null)
-        val editTextUsername = dialogView.findViewById<EditText>(R.id.editTextUsername)
-        val editTextPassword = dialogView.findViewById<EditText>(R.id.editTextPassword)
-        val buttonSignUp = dialogView.findViewById<Button>(R.id.buttonSignUp)
-        val buttonCancel = dialogView.findViewById<Button>(R.id.buttonCancelSignUp)
-        val builder = AlertDialog.Builder(this)
-            .setView(dialogView)
-        val dialog = builder.create()
 
-        buttonSignUp.setOnClickListener {
-            val username = editTextUsername.text.toString().trim()
-            val password = editTextPassword.text.toString().trim()
-
-            if (username.isNotEmpty() && password.isNotEmpty()) {
-                // Create user with Firebase Authentication
-                FirebaseAuth.getInstance().createUserWithEmailAndPassword("$username@placeholder.com", password)
-                    .addOnCompleteListener(this) { task ->
-                        if (task.isSuccessful) {
-                            // Sign up success, add user data to Firestore
-                            signUpUserToFirestore(username)
-                            // Update UI or perform other actions upon successful signup
-                            Toast.makeText(this, "Sign-up successful", Toast.LENGTH_SHORT).show()
-                            dialog.dismiss()
-                        } else {
-                            // If sign up fails, display a message to the user.
-                            val errorMessage = task.exception?.message ?: "Sign-up failed. Please try again."
-                            Toast.makeText(baseContext, errorMessage, Toast.LENGTH_SHORT).show()
-                        }
-                    }
-            } else {
-                Toast.makeText(this, "Please enter both username and password", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        buttonCancel.setOnClickListener {
-            dialog.dismiss()
-        }
-
-        dialog.show()
-    }
     private fun showAddTaskDialog() {
         // Display the dialog to add a new task
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_task, null)
@@ -346,46 +308,39 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
             val dueDate = selectedDate?.let { formatDate(it) }
 
             if (title.isNotEmpty()) {
-                // Get the current user ID
-                val currentUser = FirebaseAuth.getInstance().currentUser
-                val userId = currentUser?.uid
+                // Generate a random ID for the new task
+                val taskId = UUID.randomUUID().toString()
 
-                if (userId != null) {
-                    // Generate a random ID for the new task
-                    val taskId = UUID.randomUUID().toString()
+                // Create a new task object with the random ID and user ID
+                val newTask = Task(id = taskId, title = title, description = description, dueDate = dueDate, userId = currentUserId)
 
-                    // Create a new task object with the random ID and user ID
-                    val newTask = Task(id = taskId, title = title, description = description, dueDate = dueDate, userId = userId)
-
-                    // Store the task document in the new collection in Firestore
-                    val db = FirebaseFirestore.getInstance()
-                    db.collection("tasks") // Adjust to your new collection name
-                        .document(taskId)
-                        .set(newTask)
-                        .addOnSuccessListener {
-                            Log.d(TAG, "DocumentSnapshot added with ID: $taskId")
-                            dialog.dismiss()
-                            // Increment points directly here
-                            val userRef = db.collection("users").document(userId)
-                            db.runTransaction { transaction ->
-                                val snapshot = transaction.get(userRef)
-                                val currentPoints = snapshot.getLong("points") ?: 0
-                                transaction.update(userRef, "points", currentPoints + 1) // Increment by 1 points for task creation
+                // Store the task document in the new collection in Firestore
+                val db = FirebaseFirestore.getInstance()
+                db.collection("tasks") // Adjust to your new collection name
+                    .document(taskId)
+                    .set(newTask)
+                    .addOnSuccessListener {
+                        Log.d(TAG, "DocumentSnapshot added with ID: $taskId")
+                        dialog.dismiss()
+                        // Increment points directly here
+                        val userRef = db.collection("users").document(currentUserId)
+                        db.runTransaction { transaction ->
+                            val snapshot = transaction.get(userRef)
+                            val currentPoints = snapshot.getLong("points") ?: 0
+                            transaction.update(userRef, "points", currentPoints + 1) // Increment by 1 points for task creation
+                        }
+                            .addOnSuccessListener {
+                                Log.d(TAG, "Points incremented successfully")
+                                fetchAndDisplayPoints()
                             }
-                                .addOnSuccessListener {
-                                    Log.d(TAG, "Points incremented successfully")
-                                    fetchAndDisplayPoints()
-
-                                }
-                                .addOnFailureListener { e ->
-                                    Log.e(TAG, "Error incrementing points", e)
-                                }
-                        }
-                        .addOnFailureListener { e ->
-                            // Handle error adding task
-                            Log.e(TAG, "Error adding document", e)
-                        }
-                }
+                            .addOnFailureListener { e ->
+                                Log.e(TAG, "Error incrementing points", e)
+                            }
+                    }
+                    .addOnFailureListener { e ->
+                        // Handle error adding task
+                        Log.e(TAG, "Error adding document", e)
+                    }
             } else {
                 // Notify the user if the title is empty
                 Toast.makeText(this, "Title cannot be empty", Toast.LENGTH_SHORT).show()
@@ -400,6 +355,7 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
         // Show the dialog
         dialog.show()
     }
+
     private fun showEditTaskDialog(task: Task) {
         val editTaskDialog = EditTaskDialog(task) { editedTask ->
             taskRepository.updateTask(editedTask)
@@ -407,18 +363,16 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
         val fragmentManager: FragmentManager = supportFragmentManager
         editTaskDialog.show(fragmentManager, "EditTaskDialog")
     }
-    private fun observeTasks() {
-        // Get the current user ID
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
 
-        // Check if user ID is not null
-        if (userId != null) {
+    private fun observeTasks() {
+        // Check if user ID is not empty
+        if (currentUserId.isNotEmpty()) {
             val db = FirebaseFirestore.getInstance()
             val tasksCollectionRef = db.collection("tasks")
 
             // Query tasks for the current user
             tasksCollectionRef
-                .whereEqualTo("userId", userId)
+                .whereEqualTo("userId", currentUserId)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
                         Log.e(TAG, "Error getting tasks", error)
@@ -436,14 +390,17 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
                         // Update the UI with the retrieved tasks
                         taskAdapter.updateTasks(tasksList)
                         updateEmptyStateVisibility(tasksList.isEmpty())
-                        updateTaskCount(tasksList.size)// Update task count
+                        updateTaskCount(tasksList.size) // Update task count
                         fetchAndDisplayPoints()
                     } else {
                         Log.d(TAG, "Current data: null")
                     }
                 }
+        } else {
+            Log.e(TAG, "User ID is null or empty")
         }
     }
+
     private fun updateTaskCount(count: Int) {
         taskCountTextView.text = "Tasks: $count"
     }
@@ -452,7 +409,6 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         return sdf.format(date)
     }
-
 
     private fun updateEmptyStateVisibility(isEmpty: Boolean) {
         if (isEmpty) {
