@@ -1,7 +1,9 @@
 package com.example.taskmanagement
 
+import android.content.ContentValues.TAG
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -11,7 +13,6 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.Locale
-import android.content.ContentValues.TAG
 
 class FriendProfileActivity : AppCompatActivity() {
 
@@ -82,24 +83,40 @@ class FriendProfileActivity : AppCompatActivity() {
                 if (!querySnapshot.isEmpty) {
                     val friendDocument = querySnapshot.documents.first()
                     val friendId = friendDocument.id
-                    db.collection("users").document(friendId).collection("badges").get()
-                        .addOnSuccessListener { documents ->
-                            badgeList.clear()
-                            for (document in documents) {
-                                val badgeId = document.id
-                                val badgeName = document.getString("name") ?: "Unknown"
-                                val badgeImage = document.getString("image") ?: ""
-                                val badgeCost = document.getLong("cost")?.toInt() ?: 0
-                                badgeList.add(Badge(badgeId, badgeName, badgeImage, badgeCost))
+                    val unlockedBadges = friendDocument.get("unlockedBadges") as? List<String> ?: emptyList()
+                    Log.d(TAG, "Friend ID: $friendId") // Log the friend ID
+                    Log.d(TAG, "Unlocked Badges: $unlockedBadges") // Log the unlocked badges
+
+                    if (unlockedBadges.isNotEmpty()) {
+                        db.collection("badges")
+                            .whereIn("id", unlockedBadges)
+                            .get()
+                            .addOnSuccessListener { documents ->
+                                badgeList.clear()
+                                for (document in documents) {
+                                    val badgeId = document.id
+                                    val badgeName = document.getString("name") ?: "Unknown"
+                                    val badgeImage = document.getString("image") ?: ""
+                                    val badgeCost = document.getLong("cost")?.toInt() ?: 0
+                                    badgeList.add(Badge(badgeId, badgeName, badgeImage, badgeCost))
+                                }
+                                Log.d(TAG, "Badges fetched: ${badgeList.size}") // Log fetched badges count
+                                badgeAdapter.notifyDataSetChanged()
                             }
-                            badgeAdapter.notifyDataSetChanged()
-                        }
-                        .addOnFailureListener { exception ->
-                            Toast.makeText(this, "Error fetching badges: ${exception.message}", Toast.LENGTH_SHORT).show()
-                        }
+                            .addOnFailureListener { exception ->
+                                Log.e(TAG, "Error fetching badges: ${exception.message}") // Log the error
+                                Toast.makeText(this, "Error fetching badges: ${exception.message}", Toast.LENGTH_SHORT).show()
+                            }
+                    } else {
+                        Log.d(TAG, "No unlocked badges for user: $friendUsername")
+                    }
+                } else {
+                    Log.e(TAG, "No friend document found") // Log if no document is found
+                    Toast.makeText(this, "Friend not found", Toast.LENGTH_SHORT).show()
                 }
             }
             .addOnFailureListener { exception ->
+                Log.e(TAG, "Error fetching friend data: ${exception.message}") // Log the error
                 Toast.makeText(this, "Error fetching friend data: ${exception.message}", Toast.LENGTH_SHORT).show()
             }
     }

@@ -165,7 +165,7 @@ class FriendsActivity : AppCompatActivity() {
                     val friendAccountDateTimestamp = friendDocument.getTimestamp("signUpDate")
                     val friendAccountDate = friendAccountDateTimestamp?.toDate()?.toString() ?: "Unknown"
                     val friendTotalTasks = friendDocument.getLong("totalTasks") ?: 0
-                    val friendCompletedTasks = friendDocument.getLong("completedTasks") ?: 0
+                    val friendCompletedTasks = friendDocument.getLong("completed") ?: 0
 
                     val intent = Intent(this, FriendProfileActivity::class.java)
                     intent.putExtra("FRIEND_USERNAME", friendUsername)
