@@ -43,12 +43,12 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
     private lateinit var pointsTextView: TextView
     private lateinit var currentUserId: String
     private lateinit var currentUsername: String
+    private lateinit var currentFriendcode: String
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Initialize views
         taskCountTextView = findViewById(R.id.taskCountTextView)
         recyclerViewTasks = findViewById(R.id.recyclerViewTasks)
         textViewWelcome = findViewById(R.id.textViewWelcome)
@@ -59,6 +59,7 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
         // Retrieve the original user ID from the intent extras
         currentUserId = intent.getStringExtra("USER_ID") ?: FirebaseAuth.getInstance().currentUser?.uid ?: ""
         currentUsername = intent.getStringExtra("USERNAME") ?:""
+        currentFriendcode = intent.getStringExtra("FRIENDCODE") ?:""
 
         if (currentUserId.isNotEmpty()) {
             fetchAndDisplayUserDetails(currentUserId)
@@ -68,11 +69,8 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
 
         // Initialize RecyclerView
         taskAdapter = TaskAdapter(
-            emptyList(),
-            { task -> },
-            this,
-            { task -> showEditTaskDialog(task) }
-        )
+            emptyList()
+        ) { task -> showEditTaskDialog(task) }
         recyclerViewTasks.layoutManager = LinearLayoutManager(this)
         recyclerViewTasks.adapter = taskAdapter
 
@@ -87,10 +85,9 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
 
         // Initialize profileButton click listener
         profileButton.setOnClickListener {
-            // Start ProfileActivity and pass the username and creation date as extras
+            // Start ProfileActivity and pass the extras
             val intent = Intent(this, ProfileActivity::class.java)
             intent.putExtra("USER_ID", currentUserId)
-            intent.putExtra("USERNAME", currentUsername)
             startActivity(intent)
         }
 
@@ -166,6 +163,7 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
     private fun showFriendsActivity() {
         val intent = Intent(this, FriendsActivity::class.java)
         intent.putExtra("USER_ID", currentUserId)
+        intent.putExtra("FRIENDCODE", currentFriendcode)
         startActivity(intent)
     }
 
@@ -243,33 +241,6 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
             .addOnFailureListener { e ->
                 Log.w(TAG, "Error deleting document", e)
             }
-    }
-
-    private fun signUpUserToFirestore(username: String) {
-        val currentUser = FirebaseAuth.getInstance().currentUser
-        currentUser?.let { user ->
-            val userId = user.uid
-            val signUpDate = Calendar.getInstance().time // Get the current date
-            val db = FirebaseFirestore.getInstance()
-            val userData = hashMapOf(
-                "userId" to userId,
-                "username" to username,
-                "signUpDate" to signUpDate, // Add sign-up date to user data
-                "points" to 0 // Initialize points to 0 for new users
-                // Add more user data as needed
-            )
-            db.collection("users").document(userId)
-                .set(userData)
-                .addOnSuccessListener {
-                    Log.d(TAG, "DocumentSnapshot added with ID: $userId")
-                    // User registration and data storage successful
-                    // Proceed with any additional UI updates or actions
-                }
-                .addOnFailureListener { e ->
-                    // Handle error storing user data
-                    Log.e(TAG, "Error adding document", e)
-                }
-        }
     }
 
     private fun showAddTaskDialog() {

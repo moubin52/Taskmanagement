@@ -5,14 +5,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.example.taskmanagement.ItemTouchHelperAdapter
 import com.example.taskmanagement.R
 import com.example.taskmanagement.Task
 
 class TaskAdapter(
     private var tasks: List<Task>,
-    private val taskClickListener: (Task) -> Unit,
-    private val swipeToDeleteListener: ItemTouchHelperAdapter,
     private val editTaskListener: (Task) -> Unit
 ) : RecyclerView.Adapter<TaskAdapter.TaskViewHolder>() {
 

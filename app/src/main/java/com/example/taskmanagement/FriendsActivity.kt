@@ -14,6 +14,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import android.content.ContentValues.TAG
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 class FriendsActivity : AppCompatActivity() {
 
@@ -32,23 +33,27 @@ class FriendsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_friends)
-
+        auth = FirebaseAuth.getInstance()
+        db = FirebaseFirestore.getInstance()
         textViewFriendCode = findViewById(R.id.textViewFriendCode)
         editTextSearch = findViewById(R.id.editTextSearch)
         buttonAdd = findViewById(R.id.buttonAdd)
         recyclerViewFriends = findViewById(R.id.recyclerViewFriends)
-
-        auth = FirebaseAuth.getInstance()
-        db = FirebaseFirestore.getInstance()
-
         val username = intent.getStringExtra("USERNAME") ?: ""
         val friendcode = intent.getStringExtra("FRIENDCODE") ?: ""
         val friendslist = intent.getStringArrayListExtra("FRIENDSLIST") ?: arrayListOf()
         val currentUser = auth.currentUser
         currentUserId = currentUser?.uid ?: ""
-
         textViewFriendCode.text = "Friend Code: $friendcode"
-
+        val buttonHome: FloatingActionButton = findViewById(R.id.buttonHome)
+        buttonHome.setOnClickListener {
+            val username = intent.getStringExtra("USERNAME")
+            val intent = Intent(this, MainActivity::class.java).apply {
+                putExtra("USERNAME", username)
+            }
+            startActivity(intent)
+            finish()
+        }
         // Initialize the adapter and set it to the RecyclerView
         friendsAdapter = FriendsAdapter(friendsList) { friend ->
             // Handle the view button click here

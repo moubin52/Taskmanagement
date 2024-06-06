@@ -10,7 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.RecyclerView
 import com.squareup.picasso.Picasso
 
-class BadgeAdapter(private val context: Context, private val badgesList: MutableList<Badge>) :
+class   BadgeAdapter(private val context: Context, private val badgesList: MutableList<Badge>) :
     RecyclerView.Adapter<BadgeAdapter.BadgeViewHolder>() {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BadgeViewHolder {
         val itemView = LayoutInflater.from(context)

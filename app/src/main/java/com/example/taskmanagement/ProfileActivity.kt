@@ -4,7 +4,10 @@ import android.content.ContentValues.TAG
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -23,6 +26,7 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var textCompletedTasks: TextView
     private lateinit var recyclerViewOwnedBadges: RecyclerView
     private lateinit var badgesAdapter: BadgeAdapter
+    private lateinit var buttonDeleteAccount: Button
     private val badgesList = mutableListOf<Badge>()
     private var tasksListenerRegistration: ListenerRegistration? = null
 
@@ -30,38 +34,32 @@ class ProfileActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_profile)
 
+        val welcomeMessage = "Your Profile"
         textViewWelcome = findViewById(R.id.textViewWelcome)
         textAccountDate = findViewById(R.id.textAccountDate)
         taskCountTextView = findViewById(R.id.textViewTaskCount)
         textCompletedTasks = findViewById(R.id.textCompletedTasks)
         recyclerViewOwnedBadges = findViewById(R.id.recyclerViewOwnedBadges)
+        buttonDeleteAccount = findViewById(R.id.buttonDeleteAccount)
 
         recyclerViewOwnedBadges.layoutManager = LinearLayoutManager(this)
         badgesAdapter = BadgeAdapter(this, badgesList)
         recyclerViewOwnedBadges.adapter = badgesAdapter
 
-        // Retrieve the current user's ID
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         fetchAccountCreationDate()
         fetchCompletedTasksCount()
         fetchOwnedBadges()
-
-        // Update welcome message with username
-        val username = intent.getStringExtra("USERNAME")
-        val welcomeMessage = "$username's Profile"
         textViewWelcome.text = welcomeMessage
 
-        // Check if user ID is not null
         if (userId != null) {
             val db = FirebaseFirestore.getInstance()
             val tasksCollectionRef = db.collection("tasks")
 
-            // Query tasks for the current user
             tasksListenerRegistration = tasksCollectionRef
                 .whereEqualTo("userId", userId)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        // Handle error
                         return@addSnapshotListener
                     }
 
@@ -72,7 +70,6 @@ class ProfileActivity : AppCompatActivity() {
                 }
         }
 
-        // Set OnClickListener to buttonHome
         val buttonHome: FloatingActionButton = findViewById(R.id.buttonHome)
         buttonHome.setOnClickListener {
             val username = intent.getStringExtra("USERNAME")
@@ -80,8 +77,48 @@ class ProfileActivity : AppCompatActivity() {
                 putExtra("USERNAME", username)
             }
             startActivity(intent)
-            finish() // Optional: Finish the ProfileActivity to remove it from the back stack
+            finish()
         }
+
+        buttonDeleteAccount.setOnClickListener {
+            confirmAccountDeletion()
+        }
+    }
+
+    private fun confirmAccountDeletion() {
+        AlertDialog.Builder(this)
+            .setTitle("Delete Account")
+            .setMessage("Are you sure you want to delete your account? This action cannot be undone.")
+            .setPositiveButton("Delete") { _, _ -> deleteAccount() }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun deleteAccount() {
+        val user = FirebaseAuth.getInstance().currentUser
+        val userId = user?.uid ?: return
+
+        val db = FirebaseFirestore.getInstance()
+        val userDocumentRef = db.collection("users").document(userId)
+
+        userDocumentRef.delete()
+            .addOnSuccessListener {
+                user.delete()
+                    .addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            Toast.makeText(this, "Account deleted successfully.", Toast.LENGTH_SHORT).show()
+                            val intent = Intent(this, SignInActivity::class.java)
+                            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+                            startActivity(intent)
+                            finish()
+                        } else {
+                            Toast.makeText(this, "Failed to delete account.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+            }
+            .addOnFailureListener { exception ->
+                Toast.makeText(this, "Failed to delete account data: ${exception.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun fetchAccountCreationDate() {
@@ -95,7 +132,6 @@ class ProfileActivity : AppCompatActivity() {
                         val creationDate = documentSnapshot.getDate("signUpDate")
 
                         if (creationDate != null) {
-                            // Format the date to display in "dd/mm/yy" format
                             val dateFormat = SimpleDateFormat("dd/MM/yy", Locale.getDefault())
                             val formattedDate = dateFormat.format(creationDate)
                             textAccountDate.text = "Account created on: $formattedDate"
@@ -118,7 +154,6 @@ class ProfileActivity : AppCompatActivity() {
             db.collection("users").document(userId)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        // Handle error
                         return@addSnapshotListener
                     }
 
@@ -165,7 +200,6 @@ class ProfileActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Remove the snapshot listener when the activity is destroyed
         tasksListenerRegistration?.remove()
     }
 }
