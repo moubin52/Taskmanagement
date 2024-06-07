@@ -63,7 +63,6 @@ class BadgesActivity : AppCompatActivity(), BuyBadgeDialogFragment.OnBadgeBought
                     textViewUserPoints.text = "Points: $points"
                 }
                 .addOnFailureListener { exception ->
-                    // Handle failure
                 }
         }
     }
@@ -78,7 +77,6 @@ class BadgesActivity : AppCompatActivity(), BuyBadgeDialogFragment.OnBadgeBought
                 badgesAdapter.notifyDataSetChanged()
             }
             .addOnFailureListener { exception ->
-                // Handle the error
             }
     }
 
@@ -115,13 +113,12 @@ class BuyBadgeDialogFragment : DialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Set click listeners for Confirm and Cancel buttons
+
         view.findViewById<Button>(R.id.buttonConfirm).setOnClickListener {
             badgeId?.let { id -> attemptToBuyBadge(id, badgeCost) }
         }
 
         view.findViewById<Button>(R.id.buttonCancel).setOnClickListener {
-            // Dismiss the dialog
             dismiss()
         }
     }
@@ -151,13 +148,11 @@ class BuyBadgeDialogFragment : DialogFragment() {
                         listener?.onBadgeBought()
                         dismiss()
                     }.addOnFailureListener {
-                        // Handle the error
                     }
                 } else {
 
                 }
             }.addOnFailureListener {
-                // Handle the error
             }
         }
     }

@@ -123,7 +123,6 @@ class SignInActivity : AppCompatActivity() {
                         if (task.isSuccessful) {
                             // Sign up success, add user data to Firestore
                             signUpUserToFirestore(username)
-                            // Update UI or perform other actions upon successful signup
                             Toast.makeText(this, "Sign-up successful", Toast.LENGTH_SHORT).show()
                         } else {
                             // If sign up fails, display a message to the user.

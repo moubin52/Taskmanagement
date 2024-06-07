@@ -141,7 +141,6 @@ class ProfileActivity : AppCompatActivity() {
                     }
                 }
                 .addOnFailureListener { exception ->
-                    // Handle failure
                 }
         }
     }
@@ -187,13 +186,11 @@ class ProfileActivity : AppCompatActivity() {
                                     badgesAdapter.notifyDataSetChanged()
                                 }
                                 .addOnFailureListener { exception ->
-                                    // Handle error
                                 }
                         }
                     }
                 }
                 .addOnFailureListener { exception ->
-                    // Handle failure
                 }
         }
     }

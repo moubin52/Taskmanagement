@@ -293,7 +293,7 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
                     .addOnSuccessListener {
                         Log.d(TAG, "DocumentSnapshot added with ID: $taskId")
                         dialog.dismiss()
-                        // Increment points directly here
+                        // Increment points directly
                         val userRef = db.collection("users").document(currentUserId)
                         db.runTransaction { transaction ->
                             val snapshot = transaction.get(userRef)
@@ -319,11 +319,9 @@ class MainActivity : AppCompatActivity(), ItemTouchHelperAdapter {
         }
 
         buttonCancel.setOnClickListener {
-            // Dismiss the dialog
             dialog.dismiss()
         }
 
-        // Show the dialog
         dialog.show()
     }
 
